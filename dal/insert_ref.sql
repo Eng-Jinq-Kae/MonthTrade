@@ -1,0 +1,14 @@
+INSERT INTO "RefSection" ("Section", "SectionName")
+VALUES
+('overall', 'overall'),
+('0', 'Food & Live Animals'),
+('1', 'Beverages & Tobacco'),
+('2', 'Crude Materials, Inedible, Except Fuels'),
+('3', 'Mineral Fuels, Lubricants & Related Materials'),
+('4', 'Animal and Vegetable Oils, Fats & Waxes'),
+('5', 'Chemicals & Related Products N.E.C.'),
+('6', 'Manufactured Goods Classified Chiefly by Material'),
+('7', 'Machinery & Transport Equipment'),
+('8', 'Miscellaneous Manufactured Articles'),
+('9', 'Other Commodities & Transactions N.E.C.')
+;
