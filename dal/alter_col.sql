@@ -1,0 +1,3 @@
+ALTER TABLE "DataMonthTrade"
+ALTER COLUMN "Exports" TYPE INTEGER
+USING "Exports"::INTEGER;
