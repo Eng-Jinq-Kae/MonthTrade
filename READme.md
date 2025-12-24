@@ -5,4 +5,6 @@ https://open.dosm.gov.my/data-catalogue/trade_sitc_1d?section=overall&visual=tab
 ## Pip
 pip install SQLAlchemy\
 pip install psycopg2-binary\
-pip install pandas
+pip install numpy\
+pip install pandas\
+pip install scikit-learn
