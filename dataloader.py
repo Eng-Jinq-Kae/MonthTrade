@@ -6,12 +6,15 @@ from datetime import datetime
 from typing import Literal, List, Union
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sqlalchemy.exc import IntegrityError
 
+LR_WINDOW = 4
+
+DEBUG = 0
 ENABLE_DB_SETUP = 0 # 1: Setup database data from URL, 0: Read from SQL
-ENABLE_DB_CONNECTION = True
-ENABLE_DB_SAVE = False
-
-# TODO: when update actual, auto update moving average
+READ_URL_SQL = 0 # 1: Read from URL, 0: Read from SQL
+ENABLE_DB_CONNECTION = 1
+ENABLE_DB_SAVE = 0
 
 engine = create_engine(
     "postgresql+psycopg2://mthtradeuser:123@localhost:5432/MthTrade"
@@ -61,16 +64,24 @@ def read_data_monthtrade_section(section):
 
 
 def save_into_database(df_to_save: pd.DataFrame, table_name):
+    if DEBUG:
+        print(df_to_save.head())
+        print(df_to_save.shape)
     if ENABLE_DB_SAVE:
         print(f"Writing into {table_name}...")
-        df_to_save.to_sql(
-            name=f"{table_name}",
-            con=engine,
-            schema="public",          # optional if public
-            if_exists="append",        # append new rows
-            index=False,               # don't write DataFrame index
-            method="multi"             # faster insert
-        )
+        try:
+            df_to_save.to_sql(
+                name=f"{table_name}",
+                con=engine,
+                schema="public",          # optional if public
+                if_exists="append",        # append new rows
+                index=False,               # don't write DataFrame index
+                method="multi"             # faster insert
+            )
+            print(df_to_save.head())
+            print(f"Saves successfully with size: {df_to_save.shape}")
+        except IntegrityError as e:
+            print("Database save FAILED! Data already exist in database.")
     else:
         print("Database save is not enabled.")
 
@@ -95,7 +106,18 @@ def request_url_data_mthtrade():
     return df
 
 
-def get_data_monthtrade():
+def check_db_max_date(df):
+    max_date_by_section = df.groupby('Section')['Date'].max().reset_index(name='max_date')
+    n_unique = max_date_by_section['max_date'].nunique()
+    all_same = n_unique == 1
+    if all_same:
+        db_max_month_year = max_date_by_section['max_date'].iloc[0]
+    else:
+        db_max_month_year = None
+    return db_max_month_year
+
+
+def get_data_monthtrade_db():
     print("Get data from SQL.")
     df = read_data_monthtrade()
     if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date'])
@@ -126,7 +148,14 @@ def setup_moving_average(df_trade, trade: Literal['Exports', 'Imports']):
             Imports_2m = export_grouper.transform(lambda x: x.rolling(window=2,closed='left').mean().round().astype("Int64")),
             Imports_1m = export_grouper.transform(lambda x: x.rolling(window=1,closed='left').mean().round().astype("Int64"))
         )
-    return df_trade_collect
+    if trade == 'Exports':
+        db_table = "DataMonthTradeExportsPred"
+    elif trade == 'Imports':
+        db_table = "DataMonthTradeImportsPred"
+    else:
+        db_table = None
+    df_trade_collect = df_trade_collect[['Date','Section',f'{trade}_4m',f'{trade}_3m',f'{trade}_2m',f'{trade}_1m']]
+    save_into_database(df_trade_collect, db_table)
 
 
 def setup_linear_regression(df_trade, trade: Literal['Exports', 'Imports']):
@@ -142,7 +171,7 @@ def setup_linear_regression(df_trade, trade: Literal['Exports', 'Imports']):
                 .values
                 .reshape(-1, 1))
             y = df_trade_section[trade] 
-            window = 4
+            window = LR_WINDOW
             X_win = X[-window:]
             y_win = y[-window:]
             model = LinearRegression()
@@ -160,7 +189,13 @@ def setup_linear_regression(df_trade, trade: Literal['Exports', 'Imports']):
             })
             df_trade_pred_frame.append(df_prediction)
     df_trade_lr = pd.concat(df_trade_pred_frame, ignore_index=True)
-    return df_trade_lr
+    if trade == 'Exports':
+        db_table = "DataMonthTradeExportsPredLR"
+    elif trade == 'Imports':
+        db_table = "DataMonthTradeImportsPredLR"
+    else:
+        db_table = None
+    save_into_database(df_trade_lr, db_table)
 
 
 def setup_data_mthtrade_db():
@@ -170,60 +205,54 @@ def setup_data_mthtrade_db():
 
 
 def setup_data_ma_pred_db(df_trade, trade: Literal['Exports', 'Imports']):
-    df_trade_collect = setup_moving_average(df_trade, trade)
-    df_trade_lr = setup_linear_regression(df_trade, trade)
-    df_setup_trade = pd.merge(df_trade_collect, df_trade_lr, on=['Date', 'Section'])
-    df_setup_trade = df_setup_trade[['Date','Section',f'{trade}_4m',f'{trade}_3m',f'{trade}_2m',f'{trade}_1m',f'{trade}_pred']]
-    if trade == 'Exports':
-        db_table = "DataMonthTradeExportsPred"
-    elif trade == 'Imports':
-        db_table = "DataMonthTradeImportsPred"
-    else:
-        db_table = None
-    save_into_database(df_setup_trade, db_table)
+    setup_moving_average(df_trade, trade)
+    setup_linear_regression(df_trade, trade)
 
 
-def update_data_mthtrade_db(df=None):
-    if df is None:
-        df = request_url_data_mthtrade()
-    df_db = get_data_monthtrade()
+def update_data_mthtrade_db():
+    df_url = request_url_data_mthtrade()
+    df_db = get_data_monthtrade_db()
     if df_db is None or df_db.empty:
-        # DB empty → insert everything
-        df_new_data = df.copy()
+        print("WARNING! Update aborted. You need to setup your database.")
     else:
-        max_db_date = pd.to_datetime(df_db['Date']).max()
-        df_new_data = df[df['Date'] > max_db_date]
-    if len(df_new_data)>0:
-        print("New update data mthtrade coming in.")
-        table_name = "DataMonthTrade"
-        save_into_database(df_new_data, table_name)
+        db_max_month_year = check_db_max_date(df_db)
+        df_new_data = df_url[df_url['Date'] > db_max_month_year]
+        if len(df_new_data)>0:
+            print("New update data mthtrade coming in.")
+            table_name = "DataMonthTrade"
+            save_into_database(df_new_data, table_name)
+        else:
+            print("You are on the latest data.")
+    return df_url
+
+if __name__ == "__main__":
+    # test main
+    print("Start test dataloader.")
+
+    if ENABLE_DB_SETUP:
+        print("Start setting up data mthtrade...")
+        df = setup_data_mthtrade_db()
+        print("Sone setting up data mthtrade !")
+        # Set up export
+        print("Start setting up data export pred...")
+        df_exports = data_mthtrade_preprocessing(df, 'Exports')
+        setup_data_ma_pred_db(df_exports, 'Exports')
+        print("Done setting up data export pred !")
+        # Set up import
+        print("Start setting up data import pred...")
+        df_imports = data_mthtrade_preprocessing(df, 'Imports')
+        setup_data_ma_pred_db(df_imports, 'Imports')
+        print("Done setting up data import pred !")
     else:
-        print("You are on the latest data.")
+        df_url = update_data_mthtrade_db() #TODO always uncomment
 
+    if READ_URL_SQL:
+        df = df_url
+    else:
+        df = get_data_monthtrade_db()
 
-# test main
-print("Start test dataloader.")
-df = None
+    # section = 'overall'
+    # df = read_data_monthtrade_section(section)
+    # print(df)
 
-if ENABLE_DB_SETUP:
-    df = setup_data_mthtrade_db()
-    # Set up export
-    print("Start setting up export...")
-    df_exports = data_mthtrade_preprocessing(df, 'Exports')
-    setup_data_ma_pred_db(df_exports, 'Exports')
-    print("Done setting up export !")
-    # Set up import
-    print("Start setting up import...")
-    df_imports = data_mthtrade_preprocessing(df, 'Imports')
-    setup_data_ma_pred_db(df_imports, 'Imports')
-    print("Done setting up import !")
-
-update_data_mthtrade_db(df) #TODO always uncomment
-df = get_data_monthtrade()
-print(df.head())
-
-# section = 'overall'
-# df = read_data_monthtrade_section(section)
-# print(df)
-
-print("End test dataloader.")
+    print("End test dataloader.")
