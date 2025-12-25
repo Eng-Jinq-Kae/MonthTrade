@@ -22,6 +22,7 @@ engine = create_engine(
 
 sql_read_ref_section = text("""
     SELECT * FROM "RefSection"
+    ORDER BY "Section"
 """)
 
 sql_read_data_monthtrade = text("""
