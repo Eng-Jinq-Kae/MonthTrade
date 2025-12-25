@@ -17,10 +17,12 @@ def prediction(target_month, target_year):
         df = dl.get_data_monthtrade_db()
 
     df_exports = dl.data_mthtrade_preprocessing(df, 'Exports')
-    prediction_process(target_month_year, df_exports, 'Exports')
+    df_trade_avg_ex, df_trade_lr_ex, warning_ma_ex = prediction_process(target_month_year, df_exports, 'Exports')
 
     df_imports = dl.data_mthtrade_preprocessing(df, 'Imports')
-    prediction_process(target_month_year, df_imports, 'Imports')
+    df_trade_avg_im, df_trade_lr_im, warning_ma_im =  prediction_process(target_month_year, df_imports, 'Imports')
+
+    return df_trade_avg_ex, df_trade_lr_ex, df_trade_avg_im, df_trade_lr_im, warning_ma_ex, warning_ma_im
 
 
 def month_year_ma_check(df:pd.DataFrame):
@@ -33,13 +35,24 @@ def month_year_ma_check(df:pd.DataFrame):
 
 
 def prediction_process(target_month_year, df_trade:pd.DataFrame, trade:Literal['Exports', 'Imports']):
+    warning_ma = None
     max_month_year, expected_month_year = month_year_ma_check(df_trade)
-    if expected_month_year == target_month_year:
-        prediction_moving_average(target_month_year, df_trade, trade)
+    if target_month_year <= expected_month_year:
+        df_trade_avg = prediction_moving_average(target_month_year, df_trade, trade)
     else:
-        print(f"Date mismatch: Target date_{target_month_year}, Db date_{max_month_year}, Expect date_{expected_month_year}")
-        print(f"Date mismatch: User can only predict moving average offset one month")
-    prediction_linear_regression(target_month_year, df_trade, trade)
+        warning_ma = f"""
+        MA Date mismatch:\n
+        Target date is {target_month_year},\n
+        Db date is {max_month_year},\n
+        Expect date is {expected_month_year}.\n
+        User can only predict moving average offset one month.
+        """
+        # print(f"MA Date mismatch: Target date_{target_month_year}, Db date_{max_month_year}, Expect date_{expected_month_year}")
+        # print(f"MA Date mismatch: User can only predict moving average offset one month")
+        print(warning_ma)
+        df_trade_avg = None
+    df_trade_lr = prediction_linear_regression(target_month_year, df_trade, trade)
+    return df_trade_avg, df_trade_lr, warning_ma
 
 
 def prediction_moving_average(target_month_year, df_trade, trade):
@@ -72,6 +85,7 @@ def prediction_moving_average(target_month_year, df_trade, trade):
     else:
         db_table = None
     dl.save_into_database(df_trade_avg, db_table)
+    return df_trade_avg
 
 
 def prediction_linear_regression(target_month_year, df_trade, trade):
@@ -114,7 +128,7 @@ def prediction_linear_regression(target_month_year, df_trade, trade):
     else:
         db_table = None
     dl.save_into_database(df_trade_lr, db_table)
-    return None
+    return df_trade_lr
 
 if __name__ == "__main__":
     prediction(11,2025)
