@@ -123,7 +123,7 @@ def check_db_max_date(df):
 def get_data_monthtrade_db():
     print("Get data from SQL.")
     df = read_data_monthtrade()
-    if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date'])
+    if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date']) #TODO by right already handled
     df = df[['Date', 'Section', 'Exports', 'Imports']]
     return df
 
@@ -213,20 +213,26 @@ def setup_data_ma_pred_db(df_trade, trade: Literal['Exports', 'Imports']):
 
 
 def update_data_mthtrade_db():
-    df_url = request_url_data_mthtrade()
     df_db = get_data_monthtrade_db()
-    if df_db is None or df_db.empty:
-        print("WARNING! Update aborted. You need to setup your database.")
-    else:
-        db_max_month_year = check_db_max_date(df_db)
-        df_new_data = df_url[df_url['Date'] > db_max_month_year]
-        if len(df_new_data)>0:
-            print("New update data mthtrade coming in.")
-            table_name = "DataMonthTrade"
-            save_into_database(df_new_data, table_name)
+    if READ_URL_SQL:
+        # read URL
+        df_url = request_url_data_mthtrade()
+        # update SQL
+        if df_db is None or df_db.empty:
+            print("WARNING! Update aborted. You need to setup your database.")
         else:
-            print("You are on the latest data.")
-    return df_url
+            db_max_month_year = check_db_max_date(df_db)
+            df_new_data = df_url[df_url['Date'] > db_max_month_year]
+            if len(df_new_data)>0:
+                print("New update data mthtrade coming in.")
+                table_name = "DataMonthTrade"
+                save_into_database(df_new_data, table_name)
+            else:
+                print("You are on the latest data.")
+        return df_url
+    else:
+        # read sql
+        return df_db
 
 if __name__ == "__main__":
     # test main
@@ -247,12 +253,8 @@ if __name__ == "__main__":
         setup_data_ma_pred_db(df_imports, 'Imports')
         print("Done setting up data import pred !")
     else:
-        df_url = update_data_mthtrade_db() #TODO always uncomment
-
-    if READ_URL_SQL:
-        df = df_url
-    else:
-        df = get_data_monthtrade_db()
+        df = update_data_mthtrade_db() #TODO always uncomment
+        print(df.shape)
 
     # section = 'overall'
     # df = read_data_monthtrade_section(section)
