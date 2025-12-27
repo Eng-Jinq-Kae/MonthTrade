@@ -4,6 +4,8 @@ import pipeline as pl
 import dataloader as dl
 import pandas as pd
 
+READ_URL_SQL = dl.READ_URL_SQL #TODO: suppose to read from url, always=1
+
 def click_predict(input_month, input_year):
     st.session_state.s_input_month = input_month
     st.session_state.s_input_year = input_year
@@ -25,7 +27,8 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
         st.warning(body=warning, icon=":material/warning:")
         st.stop()
     df_merge_trade_ma = pd.merge(df_trade_avg_ex, df_trade_avg_im, on=['Date', 'Section'])
-    df_actual = dl.read_data_monthtrade()
+    # df_actual = dl.read_data_monthtrade()
+    df_actual = dl.update_data_mthtrade_db()
     target_month_year = pd.Period(f'{inp_year}-{inp_month}', freq="M").to_timestamp(how='start')
     df_actual = df_actual[df_actual['Date']<target_month_year] #TODO: < or <=
     df_last_12 = (
