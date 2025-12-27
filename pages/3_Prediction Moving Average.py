@@ -92,10 +92,10 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
             strokeDash=alt.StrokeDash(
                 'Type:N',
                 scale=alt.Scale(
-                    domain=['Actual', 'Prediction'],
-                    range=[[1, 0], [5, 5]]  # solid vs dotted
+                    domain=['Prediction'],
+                    range=[[5, 5]]  # solid vs dotted
                 ),
-                legend=alt.Legend(title="Data Type")
+                legend=alt.Legend(title="Prediction")
             ),
             tooltip=['Date:T', 'Trade:N', 'Value:Q', 'Type:N']
         ).properties(
@@ -144,7 +144,7 @@ inp_month = st.number_input(label="Month: Press the -+ icon or type by keyboard.
 inp_year = st.text_input(label="Year: yyyy format type by keyboard.", value="2025")
 pred_input = (inp_month, inp_year)
 predict = st.button("Predict", on_click=click_predict, args=pred_input)
-st.session_state
+# st.session_state
 if st.session_state.get("run_prediction", False):
     (
         st.session_state.df_trade_avg_ex,
