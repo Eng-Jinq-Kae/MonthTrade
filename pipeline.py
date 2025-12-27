@@ -89,6 +89,9 @@ def prediction_moving_average(target_month_year, df_trade, trade):
 
 
 def prediction_linear_regression(target_month_year, df_trade, trade):
+    df_db = dl.read_data_monthtrade()
+    db_max_month_year = dl.check_db_max_date(df_db)
+    db_max_month_year = pd.Period(db_max_month_year, freq="M").to_timestamp(how='start')
     df_trade = df_trade[df_trade['Date']<target_month_year].sort_values('Date')
     df_trade = df_trade.sort_values(by=['Section','Date']).reset_index(drop=True)
     df_trade_lr_frame = []
@@ -105,19 +108,37 @@ def prediction_linear_regression(target_month_year, df_trade, trade):
         y_win = y[-window:]
         model = LinearRegression()
         model.fit(X_win, y_win)
-        last_date = pd.to_datetime(df_trade_section['Date']).max()
-        # next_date = last_date + pd.offsets.MonthBegin(1)
-        next_date = target_month_year
-        X_next = np.array(
-            [(next_date.year * 12 + next_date.month)]
-        ).reshape(-1, 1)
-        y_next = model.predict(X_next)
-        df_prediction = pd.DataFrame({
-            'Date': [next_date],
-            'Section': [section],
-            f'{trade}_pred': pd.Series(y_next).round().astype('Int64')
-        })
-        df_trade_lr_frame.append(df_prediction)
+        # last_date = pd.to_datetime(df_trade_section['Date']).max()
+        expect_month_year = db_max_month_year + pd.offsets.MonthBegin(1)
+        if target_month_year <= expect_month_year:
+            next_date = target_month_year
+            X_next = np.array(
+                [(next_date.year * 12 + next_date.month)]
+            ).reshape(-1, 1)
+            y_next = model.predict(X_next)
+            df_prediction = pd.DataFrame({
+                'Date': [next_date],
+                'Section': [section],
+                f'{trade}_pred': pd.Series(y_next).round().astype('Int64')
+            })
+            df_trade_lr_frame.append(df_prediction)
+        else:
+            target_period = pd.Period(target_month_year, freq='M')
+            db_period = pd.Period(db_max_month_year, freq='M')
+            gap_months = target_period.ordinal - db_period.ordinal
+            for offset_month in range(1, gap_months+1):
+                expect_month_year = db_max_month_year + pd.offsets.MonthBegin(offset_month)
+                next_date = expect_month_year
+                X_next = np.array(
+                    [(next_date.year * 12 + next_date.month)]
+                ).reshape(-1, 1)
+                y_next = model.predict(X_next)
+                df_prediction = pd.DataFrame({
+                    'Date': [next_date],
+                    'Section': [section],
+                    f'{trade}_pred': pd.Series(y_next).round().astype('Int64')
+                })
+                df_trade_lr_frame.append(df_prediction)
     df_trade_lr = pd.concat(df_trade_lr_frame, ignore_index=True)
     for col in [f'{trade}_pred']:
         df_trade_lr[col] = df_trade_lr[col].astype('Int64')
