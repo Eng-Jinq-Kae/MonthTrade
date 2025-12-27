@@ -3,12 +3,12 @@ import dataloader as dl
 
 st.title("Table")
 df_ref = dl.read_ref_section()
-df_db = dl.read_data_monthtrade()
+df = dl.update_data_mthtrade_db()
 section_list = df_ref['Section'].unique().tolist()
 for section in section_list:
     section_name = df_ref.loc[df_ref['Section'] == section, 'SectionName'].iloc[0]
     st.subheader(f'{section} - {section_name}')
-    df_section = df_db[df_db['Section'] == section]
+    df_section = df[df['Section'] == section]
     df_section_show = df_section.rename(columns={"Exports": "Exports (RM)", "Imports": "Imports (RM)"})
     st.dataframe(df_section_show, hide_index=True)
     df_plot = df_section.set_index('Date')[['Exports', 'Imports']]
