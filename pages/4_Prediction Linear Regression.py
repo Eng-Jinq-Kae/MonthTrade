@@ -5,7 +5,7 @@ import pandas as pd
 
 def read_df_lr(df_trade_pred, subheader, trade, warning=None):
     st.subheader(subheader)
-    df_actual = dl.read_data_monthtrade()
+    df_actual = dl.get_data_monthtrade_db()
     df_trade_actual = dl.data_mthtrade_preprocessing(df_actual, trade)
     frames = [df_trade_actual, df_trade_pred]
     df_actual_pred = pd.concat(frames)
