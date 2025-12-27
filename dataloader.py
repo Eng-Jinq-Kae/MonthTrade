@@ -106,6 +106,7 @@ def request_url_data_mthtrade():
         'exports': 'Exports',
         'imports': 'Imports'
     })
+    print("Successfully get data from URL.")
     return df
 
 
@@ -125,6 +126,7 @@ def get_data_monthtrade_db():
     df = read_data_monthtrade()
     if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date']) #TODO by right already handled
     df = df[['Date', 'Section', 'Exports', 'Imports']]
+    print("Successfully get data from SQL.")
     return df
 
 
@@ -239,6 +241,7 @@ if __name__ == "__main__":
     print("Start test dataloader.")
 
     if ENABLE_DB_SETUP:
+        READ_URL_SQL = 1
         print("Start setting up data mthtrade...")
         df = setup_data_mthtrade_db()
         print("Sone setting up data mthtrade !")
@@ -253,6 +256,7 @@ if __name__ == "__main__":
         setup_data_ma_pred_db(df_imports, 'Imports')
         print("Done setting up data import pred !")
     else:
+        READ_URL_SQL = 0
         df = update_data_mthtrade_db() #TODO always uncomment
         print(df.shape)
 
