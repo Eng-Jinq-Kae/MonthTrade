@@ -47,6 +47,7 @@ def read_ref_section():
 def read_data_monthtrade():
     with engine.connect() as conn:
         df = pd.read_sql(sql_read_data_monthtrade, conn)
+        if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date'])
         if ENABLE_DB_CONNECTION and len(df)>0:
             print("Postgre Db is connected succesfully to DataMonthTrade")
     return df
@@ -59,6 +60,7 @@ def read_data_monthtrade_section(section):
             conn,
             params={"section": section}
         )
+        if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date'])
         if ENABLE_DB_CONNECTION and len(df) > 0:
             print("Postgre DB connected successfully to DataMonthTrade")
     return df
