@@ -5,16 +5,11 @@ from typing import Literal, List, Union
 from sklearn.linear_model import LinearRegression
 
 LR_WINDOW = 4
-READ_URL_SQL = 0 #TODO: suppose to read from url, always=1
 
 def prediction(target_month, target_year):
     target_month_year = pd.Period(f'{target_year}-{target_month}', freq="M").to_timestamp(how='start')
 
-    if READ_URL_SQL:
-        df_url = dl.update_data_mthtrade_db()
-        df = df_url
-    else:
-        df = dl.get_data_monthtrade_db()
+    df = dl.update_data_mthtrade_db()
 
     df_exports = dl.data_mthtrade_preprocessing(df, 'Exports')
     df_trade_avg_ex, df_trade_lr_ex, warning_ma_ex = prediction_process(target_month_year, df_exports, 'Exports')
