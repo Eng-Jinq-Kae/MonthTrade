@@ -105,7 +105,7 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
             height=400
         )
 
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width='stretch')
         st.divider()
     
     st.success("All moving average chart generated successfully.")
