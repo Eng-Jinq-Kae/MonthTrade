@@ -10,7 +10,7 @@ def chart_df_lr(subheader, df_trade_pred_ex, df_trade_pred_im, inp_month, inp_ye
     df_merge_trade_lr = pd.merge(df_trade_pred_ex, df_trade_pred_im, on=['Date', 'Section'])
     df_actual = dl.update_data_mthtrade_db()
     target_month_year = pd.Period(f'{inp_year}-{inp_month}', freq="M").to_timestamp(how='start')
-    df_actual = df_actual[df_actual['Date']<target_month_year] #TODO: < or <=
+    df_actual = df_actual[df_actual['Date']<target_month_year] # TODO: < or <=
     df_last_12 = (
         df_actual
         .sort_values('Date')
@@ -20,9 +20,15 @@ def chart_df_lr(subheader, df_trade_pred_ex, df_trade_pred_im, inp_month, inp_ye
     )
     df_last_12 = df_last_12.sort_values(by=['Section','Date']).reset_index(drop=True)
     df_last_12 = df_last_12[df_last_12['Section'] != 'overall']
-    # st.dataframe(df_last_12, hide_index=True)
     st.subheader("Linear Regression Table")
-    st.dataframe(df_merge_trade_lr, hide_index=True)
+    # st.dataframe(df_merge_trade_lr, hide_index=True)
+    last_two_cols = df_merge_trade_lr.columns[-2:]
+    st.dataframe(
+        df_merge_trade_lr.style.format(
+            {col: "{:,}" for col in last_two_cols}
+        ),
+        hide_index=True
+    )
 
     # chart
     st.subheader(subheader)
@@ -84,9 +90,16 @@ def chart_df_lr(subheader, df_trade_pred_ex, df_trade_pred_im, inp_month, inp_ye
         st.divider()
 
     st.subheader("Last 12 months actual table")
-    st.dataframe(df_last_12, hide_index=True)
+    # st.dataframe(df_last_12, hide_index=True)
+    last_two_cols = df_last_12.columns[-2:]
+    st.dataframe(
+        df_last_12.style.format(
+            {col: "{:,}" for col in last_two_cols}
+        ),
+        hide_index=True
+    )
     
-    st.success("All moving average chart generated successfully.")
+    st.success("All linear regression chart generated successfully.")
 
 
 st.title("Prediction Linear Regression")
