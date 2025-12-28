@@ -2,7 +2,11 @@ import dataloader as dl
 import numpy as np
 import pandas as pd
 from typing import Literal, List, Union
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
 
 LR_WINDOW = 4
 
@@ -16,6 +20,8 @@ def prediction(target_month, target_year):
 
     df_imports = dl.data_mthtrade_preprocessing(df, 'Imports')
     df_trade_avg_im, df_trade_lr_im, warning_ma_im =  prediction_process(target_month_year, df_imports, 'Imports')
+
+    # TODO: Save lr table for whatif
 
     return df_trade_avg_ex, df_trade_lr_ex, df_trade_avg_im, df_trade_lr_im, warning_ma_ex, warning_ma_im
 
@@ -33,6 +39,8 @@ def prediction_process(target_month_year, df_trade:pd.DataFrame, trade:Literal['
     if target_month_year <= expected_month_year:
         df_trade_avg = prediction_moving_average(target_month_year, df_trade, trade)
     else:
+        df_trade_avg = None
+    if df_trade_avg is None:
         warning_ma = f"""
         MA Date mismatch:\n
         Target date is {target_month_year},\n
@@ -42,8 +50,7 @@ def prediction_process(target_month_year, df_trade:pd.DataFrame, trade:Literal['
         """
         # print(f"MA Date mismatch: Target date_{target_month_year}, Db date_{max_month_year}, Expect date_{expected_month_year}")
         # print(f"MA Date mismatch: User can only predict moving average offset one month")
-        print(warning_ma)
-        df_trade_avg = None
+        # print(warning_ma)
     df_trade_lr = prediction_linear_regression(target_month_year, df_trade, trade)
     return df_trade_avg, df_trade_lr, warning_ma
 
@@ -81,11 +88,60 @@ def prediction_moving_average(target_month_year, df_trade, trade):
     return df_trade_avg
 
 
+def prediction_model_selection_section(df_trade, trade, section):
+    dates = pd.to_datetime(df_trade['Date'])
+    X = ((dates.dt.year * 12 + dates.dt.month)
+        .values
+        .reshape(-1, 1))
+    y = df_trade[trade]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+    )
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    models = {
+        "Linear Regression": LinearRegression(),
+        "Decision Tree": DecisionTreeRegressor(random_state=42)
+    }
+
+    best_model = None
+    best_model_name = None
+    r2_lr = None
+    r2_dt = None
+    for name, m in models.items():
+        m.fit(X_train_scaled, y_train)
+        preds = m.predict(X_test_scaled)
+        r2 = r2_score(y_test, preds)
+        if name == "Linear Regression":
+            r2_lr = r2
+        if name == "Decision Tree":
+            r2_dt = r2
+        # print(trade, section, name, r2_score(y_test, preds), mean_squared_error(y_test, preds))
+        # results_model_selection.append({
+        #     "Trade": trade,
+        #     "Section": section,
+        #     "Model": names,
+        #     "R2": r2_score(y_test, preds),
+        #     "MSE": mean_squared_error(y_test, preds)
+        # })
+    
+    if r2_lr >= r2_dt:
+        best_model = LinearRegression()
+    else:
+        best_model = DecisionTreeRegressor()
+    # print(trade, section, best_model)
+    # TODO: save the best fit into a SQL table
+    return best_model
+
 def prediction_linear_regression(target_month_year, df_trade, trade):
     df_db = dl.read_data_monthtrade()
     db_max_month_year = dl.check_db_max_date(df_db)
     db_max_month_year = pd.Period(db_max_month_year, freq="M").to_timestamp(how='start')
-    df_trade = df_trade[df_trade['Date']<target_month_year].sort_values('Date')
+    df_trade = df_trade[df_trade['Date']<target_month_year].sort_values('Date') # train without actual data
     df_trade = df_trade.sort_values(by=['Section','Date']).reset_index(drop=True)
     df_trade_lr_frame = []
     unique_section = df_trade['Section'].unique().tolist()
@@ -99,7 +155,8 @@ def prediction_linear_regression(target_month_year, df_trade, trade):
         window = LR_WINDOW
         X_win = X[-window:]
         y_win = y[-window:]
-        model = LinearRegression()
+        model = prediction_model_selection_section(df_trade_section, trade, section)
+        # model = LinearRegression()
         model.fit(X_win, y_win)
         # last_date = pd.to_datetime(df_trade_section['Date']).max()
         expect_month_year = db_max_month_year + pd.offsets.MonthBegin(1) # max_month=Oct, expect_month=Nov
