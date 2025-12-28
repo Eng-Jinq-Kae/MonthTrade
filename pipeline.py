@@ -104,8 +104,8 @@ def prediction_linear_regression(target_month_year, df_trade, trade):
         model = LinearRegression()
         model.fit(X_win, y_win)
         # last_date = pd.to_datetime(df_trade_section['Date']).max()
-        expect_month_year = db_max_month_year + pd.offsets.MonthBegin(1)
-        if target_month_year <= expect_month_year:
+        expect_month_year = db_max_month_year + pd.offsets.MonthBegin(1) # max_month=Oct, expect_month=Nov
+        if target_month_year <= expect_month_year: # taregt_month=Nov, expect_month=Nov, offset 1 month
             next_date = target_month_year
             X_next = np.array(
                 [(next_date.year * 12 + next_date.month)]
@@ -117,7 +117,7 @@ def prediction_linear_regression(target_month_year, df_trade, trade):
                 f'{trade}_pred': pd.Series(y_next).round().astype('Int64')
             })
             df_trade_lr_frame.append(df_prediction)
-        else:
+        else: # taregt_month=Oct, expect_month=Nov, offset n month
             target_period = pd.Period(target_month_year, freq='M')
             db_period = pd.Period(db_max_month_year, freq='M')
             gap_months = target_period.ordinal - db_period.ordinal
