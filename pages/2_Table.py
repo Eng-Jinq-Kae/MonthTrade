@@ -10,7 +10,14 @@ for section in section_list:
     st.subheader(f'{section} - {section_name}')
     df_section = df[df['Section'] == section]
     df_section_show = df_section.rename(columns={"Exports": "Exports (RM)", "Imports": "Imports (RM)"})
-    st.dataframe(df_section_show, hide_index=True)
+    # st.dataframe(df_section_show, hide_index=True)
+    st.dataframe(
+        df_section_show.style.format({
+            "Exports (RM)": "{:,}",
+            "Imports (RM)": "{:,}"
+        }),
+        hide_index=True
+    )
     df_plot = df_section.set_index('Date')[['Exports', 'Imports']]
     st.line_chart(df_plot, color=('#FF7F0E','#1F77B4'))
     st.write(f'Chart of: {section_name}')
