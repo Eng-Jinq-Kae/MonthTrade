@@ -35,6 +35,46 @@ sql_read_data_monthtrade_section = text("""
     WHERE "Section" = :section
 """)
 
+sql_read_data_pred_ex = text(f"""
+    SELECT
+        d."Date",
+        d."Section",
+        d."Exports",
+        m."Exports_4m",
+        m."Exports_3m",
+        m."Exports_2m",
+        m."Exports_1m",
+        p."Exports_pred"
+    FROM "DataMonthTrade" d               
+    JOIN "DataMonthTradeExportsPred" m
+        ON m."Date" = d."Date"
+    AND m."Section" = d."Section"
+    JOIN "DataMonthTradeExportsPredLR" p
+        ON p."Date" = d."Date"
+    AND p."Section" = d."Section"
+    ORDER BY "Section", "Date"
+""")
+
+sql_read_data_pred_im = text(f"""
+    SELECT
+        d."Date",
+        d."Section",
+        d."Imports",
+        m."Imports_4m",
+        m."Imports_3m",
+        m."Imports_2m",
+        m."Imports_1m",
+        p."Imports_pred"
+    FROM "DataMonthTrade" d               
+    JOIN "DataMonthTradeImportsPred" m
+        ON m."Date" = d."Date"
+    AND m."Section" = d."Section"
+    JOIN "DataMonthTradeImportsPredLR" p
+        ON p."Date" = d."Date"
+    AND p."Section" = d."Section"
+    ORDER BY "Section", "Date"
+""")
+
 
 def read_ref_section():
     if READ_URL_SQL:
@@ -68,6 +108,22 @@ def read_data_monthtrade_section(section):
         if len(df) > 0:
             print("Postgre DB connected successfully to DataMonthTrade by section")
     return df
+
+
+def get_data_pred_db(trade: Literal['Exports', 'Imports']):
+    sql = sql_read_data_pred_ex if trade == 'Exports' else sql_read_data_pred_im
+
+    with engine.connect() as conn:
+        df = pd.read_sql(sql, conn)
+
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'])
+
+    if len(df) > 0:
+        print("Postgre DB connected successfully to pred")
+
+    return df
+
 
 
 def save_into_database(df_to_save: pd.DataFrame, table_name):
@@ -263,8 +319,10 @@ if __name__ == "__main__":
         df = update_data_mthtrade_db() # TODO: always uncomment
         print(df.shape)
 
-    # section = 'overall'
-    # df = read_data_monthtrade_section(section)
-    # print(df)
+    df = get_data_pred_db('Exports')
+    print(df.head())
+
+    df = get_data_pred_db('Imports')
+    print(df.head())
 
     print("End test dataloader.")
