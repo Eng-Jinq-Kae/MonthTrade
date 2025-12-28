@@ -70,8 +70,15 @@ st.page_link(
 st.page_link(
     "pages/4_Prediction Linear Regression.py",
     label="Go to Linear Regression Page",
-    icon=":material/bolt:"
+    icon=":material/online_prediction:"
 )
+
+st.page_link(
+    "pages/5_Prediction Accuracy.py",
+    label="Go to Prediction Accuracy Page",
+    icon=":material/search_gear:"
+)
+
 
 multi = '''
 If export more than previous month, it will show :green[green]  
