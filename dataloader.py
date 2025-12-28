@@ -13,7 +13,7 @@ LR_WINDOW = 4
 DEBUG = 0
 ENABLE_DB_SETUP = 0 # 1: Setup database data from URL, 0: Read from SQL; Only can run this in dataloader
 READ_URL_SQL = 0 # 1: Read from URL, 0: Read from SQL
-# ENABLE_DB_CONNECTION = 1
+ENABLE_URL_UPDATE_SQL = 0 # Must set 1 in production, else keep 0 to read dummy daat from SQL
 ENABLE_DB_SAVE = 0
 
 engine = create_engine(
@@ -224,14 +224,33 @@ def update_data_mthtrade_db():
         df_url = request_url_data_mthtrade()
         return df_url
     else:
+        df_db = get_data_monthtrade_db()
+        if ENABLE_URL_UPDATE_SQL:
+            df = request_url_data_mthtrade()
+            db_max_month_year = check_db_max_date(df_db)
+            df_new_data = df[df['Date'] > db_max_month_year]
+            if len(df_new_data)>0:
+                print("New update data mthtrade coming in.")
+                table_name = "DataMonthTrade"
+                save_into_database(df_new_data, table_name)
+                df_db = get_data_monthtrade_db()
+            else:
+                print("You are on the latest data.")
+        return df_db
+                
+
         # read sql
         df_db = get_data_monthtrade_db()
         # update SQL
         if df_db is None or df_db.empty:
             print("WARNING! Update aborted. You need to setup your database.")
         else:
+            if READ_URL_SQL:
+                df = request_url_data_mthtrade()
+            else:
+                df = df_db
             db_max_month_year = check_db_max_date(df_db)
-            df_new_data = df_url[df_url['Date'] > db_max_month_year]
+            df_new_data = df[df['Date'] > db_max_month_year]
             if len(df_new_data)>0:
                 print("New update data mthtrade coming in.")
                 table_name = "DataMonthTrade"
