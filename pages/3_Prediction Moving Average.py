@@ -3,6 +3,8 @@ import altair as alt
 import pipeline as pl
 import dataloader as dl
 import pandas as pd
+import datetime
+import numpy as np
 
 READ_URL_SQL = dl.READ_URL_SQL #TODO: suppose to read from url, always=1
 
@@ -22,7 +24,6 @@ def read_df_ma(df_trade_pred, subheader, trade, warning=None):
 
 
 def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month, inp_year, period=None):
-    st.subheader(subheader)
     if df_trade_avg_ex is None and 'MA Date mismatch' in warning:
         st.warning(body=warning, icon=":material/warning:")
         st.stop()
@@ -49,12 +50,17 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
     # st.write(period)
     if period is not None:
         df_merge_trade_ma_p = df_merge_trade_ma[['Date','Section',f'Exports_{period}',f'Imports_{period}']]
+        st.subheader("Moving Average Table")
         st.dataframe(df_merge_trade_ma_p, hide_index=True)
-        st.dataframe(df_last_12, hide_index=True)
+        # st.dataframe(df_last_12, hide_index=True)
+    else:
+        st.stop()
     
     # chart
+    st.subheader(subheader)
     df_ref = dl.read_ref_section()
     section_list = df_ref['Section'].unique().tolist()
+    section_list.remove("overall")
     for section in section_list:
         section_name = df_ref.loc[df_ref['Section'] == section, 'SectionName'].iloc[0]
         st.subheader(f'{section} - {section_name}')
@@ -107,6 +113,9 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
 
         st.altair_chart(chart, width='stretch')
         st.divider()
+
+    st.subheader("Last 12 months actual table")
+    st.dataframe(df_last_12, hide_index=True)
     
     st.success("All moving average chart generated successfully.")
 
@@ -139,14 +148,27 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
 
 st.title("Prediction Moving Average")
 st.subheader("Target Month Year")
-inp_month = st.number_input(label="Month: Press the -+ icon or type by keyboard.",
-                            min_value=1,
-                            max_value=12,
-                            step=1,
-                            icon=":material/calendar_month:")
-inp_year = st.text_input(label="Year: yyyy format type by keyboard.", value="2025")
+col_mth, col_year, col_btn_pred = st.columns(3)
+current_month = datetime.date.today().month
+with col_mth:
+    inp_month = st.number_input(label="Month",
+                                min_value=1,
+                                max_value=12,
+                                step=1,
+                                value=current_month,
+                                icon=":material/calendar_month:")
+current_year = datetime.date.today().year
+with col_year:
+    inp_year = st.number_input(label="Month",
+                                min_value=current_year-100,
+                                max_value=current_year+100,
+                                step=1,
+                                value=current_year,
+                                icon=":material/calendar_month:")
 pred_input = (inp_month, inp_year)
-predict = st.button("Predict", on_click=click_predict, args=pred_input)
+with col_btn_pred:
+    col_btn_pred.space("small")
+    predict = st.button("Predict", on_click=click_predict, args=pred_input)
 # st.session_state
 if st.session_state.get("run_prediction", False):
     (
@@ -161,7 +183,7 @@ if st.session_state.get("run_prediction", False):
         st.session_state.s_input_year,
     )
 
-    st.success(f"Date updated:{st.session_state.s_input_month}-{ st.session_state.s_input_year}")
+    st.success(f"Date loaded:{st.session_state.s_input_month}-{st.session_state.s_input_year}")
 
     # subheader = "Prediction Moving Average Export"
     # read_df_ma(st.session_state.df_trade_avg_ex, subheader, 'Exports', st.session_state.warning_ma_ex)
