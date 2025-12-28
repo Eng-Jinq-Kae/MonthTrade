@@ -1,5 +1,6 @@
 import streamlit as st
 import dataloader as dl
+import pandas as pd
 
 st.title("Home: SITC Monthly Trade")
 st.page_link(
@@ -31,6 +32,10 @@ def write_container(section: int, df_actual, df_ref):
 
     with container:
         st.write(f"Section {section}")
+        db_month_year_max = dl.check_db_max_date(df_actual)
+        db_month_year_max_1 = db_month_year_max - pd.offsets.MonthBegin(1)
+        st.write(db_month_year_max)
+        st.write(db_month_year_max_1)
         # section_name = df_ref.loc[df_ref['Section'] == section, 'SectionName'].iloc[0]
         # st.write(section_name)
 
