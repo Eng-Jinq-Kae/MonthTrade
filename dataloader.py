@@ -11,9 +11,9 @@ from sqlalchemy.exc import IntegrityError
 LR_WINDOW = 4
 
 DEBUG = 0
-ENABLE_DB_SETUP = 0 # 1: Setup database data from URL, 0: Read from SQL
+ENABLE_DB_SETUP = 0 # 1: Setup database data from URL, 0: Read from SQL; Only can run this in dataloader
 READ_URL_SQL = 0 # 1: Read from URL, 0: Read from SQL
-ENABLE_DB_CONNECTION = 1
+# ENABLE_DB_CONNECTION = 1
 ENABLE_DB_SAVE = 0
 
 engine = create_engine(
@@ -37,10 +37,14 @@ sql_read_data_monthtrade_section = text("""
 
 
 def read_ref_section():
-    with engine.connect() as conn:
-        df = pd.read_sql(sql_read_ref_section, conn)
-        if ENABLE_DB_CONNECTION and len(df)>0:
-            print("Postgre Db is connected succesfully to RefSection")
+    if READ_URL_SQL:
+        df = pd.read_csv("csv/RefSection.csv")
+        print("Read RefSection from csv")
+    else:
+        with engine.connect() as conn:
+            df = pd.read_sql(sql_read_ref_section, conn)
+            if len(df)>0:
+                print("Postgre Db is connected succesfully to RefSection")
     return df
 
 
@@ -48,7 +52,7 @@ def read_data_monthtrade():
     with engine.connect() as conn:
         df = pd.read_sql(sql_read_data_monthtrade, conn)
         if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date'])
-        if ENABLE_DB_CONNECTION and len(df)>0:
+        if len(df)>0:
             print("Postgre Db is connected succesfully to DataMonthTrade")
     return df
 
@@ -61,8 +65,8 @@ def read_data_monthtrade_section(section):
             params={"section": section}
         )
         if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date'])
-        if ENABLE_DB_CONNECTION and len(df) > 0:
-            print("Postgre DB connected successfully to DataMonthTrade")
+        if len(df) > 0:
+            print("Postgre DB connected successfully to DataMonthTrade by section")
     return df
 
 
@@ -215,10 +219,13 @@ def setup_data_ma_pred_db(df_trade, trade: Literal['Exports', 'Imports']):
 
 
 def update_data_mthtrade_db():
-    df_db = get_data_monthtrade_db()
     if READ_URL_SQL:
         # read URL
         df_url = request_url_data_mthtrade()
+        return df_url
+    else:
+        # read sql
+        df_db = get_data_monthtrade_db()
         # update SQL
         if df_db is None or df_db.empty:
             print("WARNING! Update aborted. You need to setup your database.")
@@ -231,9 +238,7 @@ def update_data_mthtrade_db():
                 save_into_database(df_new_data, table_name)
             else:
                 print("You are on the latest data.")
-        return df_url
-    else:
-        # read sql
+        df_db = get_data_monthtrade_db()
         return df_db
 
 if __name__ == "__main__":
