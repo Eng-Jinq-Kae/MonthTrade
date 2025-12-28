@@ -6,7 +6,7 @@ import pandas as pd
 import datetime
 import numpy as np
 
-READ_URL_SQL = dl.READ_URL_SQL #TODO: suppose to read from url, always=1
+READ_URL_SQL = dl.READ_URL_SQL # TODO: suppose to read from url, always=1
 
 def click_predict(input_month, input_year):
     st.session_state.s_input_month = input_month
@@ -31,7 +31,7 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
     # df_actual = dl.read_data_monthtrade()
     df_actual = dl.update_data_mthtrade_db()
     target_month_year = pd.Period(f'{inp_year}-{inp_month}', freq="M").to_timestamp(how='start')
-    df_actual = df_actual[df_actual['Date']<target_month_year] #TODO: < or <=
+    df_actual = df_actual[df_actual['Date']<target_month_year] # TODO: < or <=
     df_last_12 = (
         df_actual
         .sort_values('Date')
@@ -51,8 +51,14 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
     if period is not None:
         df_merge_trade_ma_p = df_merge_trade_ma[['Date','Section',f'Exports_{period}',f'Imports_{period}']]
         st.subheader("Moving Average Table")
-        st.dataframe(df_merge_trade_ma_p, hide_index=True)
-        # st.dataframe(df_last_12, hide_index=True)
+        # st.dataframe(df_merge_trade_ma_p, hide_index=True)
+        last_two_cols = df_merge_trade_ma_p.columns[-2:]
+        st.dataframe(
+            df_merge_trade_ma_p.style.format(
+                {col: "{:,}" for col in last_two_cols}
+            ),
+            hide_index=True
+        )
     else:
         st.stop()
     
@@ -115,7 +121,14 @@ def chart_df_ma(subheader, df_trade_avg_ex, df_trade_avg_im, warning, inp_month,
         st.divider()
 
     st.subheader("Last 12 months actual table")
-    st.dataframe(df_last_12, hide_index=True)
+    # st.dataframe(df_last_12, hide_index=True)
+    last_two_cols = df_last_12.columns[-2:]
+    st.dataframe(
+        df_last_12.style.format(
+            {col: "{:,}" for col in last_two_cols}
+        ),
+        hide_index=True
+    )
     
     st.success("All moving average chart generated successfully.")
 
