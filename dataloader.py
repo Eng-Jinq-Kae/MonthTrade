@@ -128,7 +128,7 @@ def check_db_max_date(df):
 def get_data_monthtrade_db():
     print("Get data from SQL.")
     df = read_data_monthtrade()
-    if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date']) #TODO by right already handled
+    if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date']) # TODO: by right already handled
     df = df[['Date', 'Section', 'Exports', 'Imports']]
     print("Successfully get data from SQL.")
     return df
@@ -237,28 +237,7 @@ def update_data_mthtrade_db():
             else:
                 print("You are on the latest data.")
         return df_db
-                
-
-        # read sql
-        df_db = get_data_monthtrade_db()
-        # update SQL
-        if df_db is None or df_db.empty:
-            print("WARNING! Update aborted. You need to setup your database.")
-        else:
-            if READ_URL_SQL:
-                df = request_url_data_mthtrade()
-            else:
-                df = df_db
-            db_max_month_year = check_db_max_date(df_db)
-            df_new_data = df[df['Date'] > db_max_month_year]
-            if len(df_new_data)>0:
-                print("New update data mthtrade coming in.")
-                table_name = "DataMonthTrade"
-                save_into_database(df_new_data, table_name)
-            else:
-                print("You are on the latest data.")
-        df_db = get_data_monthtrade_db()
-        return df_db
+    
 
 if __name__ == "__main__":
     # test main
@@ -281,7 +260,7 @@ if __name__ == "__main__":
         print("Done setting up data import pred !")
     else:
         READ_URL_SQL = 0
-        df = update_data_mthtrade_db() #TODO always uncomment
+        df = update_data_mthtrade_db() # TODO: always uncomment
         print(df.shape)
 
     # section = 'overall'
