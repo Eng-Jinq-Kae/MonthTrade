@@ -20,9 +20,7 @@ def prediction(target_month, target_year):
     return df_trade_avg_ex, df_trade_lr_ex, df_trade_avg_im, df_trade_lr_im, warning_ma_ex, warning_ma_im
 
 
-def month_year_ma_check(df:pd.DataFrame):
-    if df.empty:
-        return False
+def month_year_ma_one_offset(df:pd.DataFrame):
     db_max_month_year = dl.check_db_max_date(df)
     # must be exactly next month
     expected_month_year = db_max_month_year + pd.offsets.MonthBegin(1)
@@ -31,7 +29,7 @@ def month_year_ma_check(df:pd.DataFrame):
 
 def prediction_process(target_month_year, df_trade:pd.DataFrame, trade:Literal['Exports', 'Imports']):
     warning_ma = None
-    max_month_year, expected_month_year = month_year_ma_check(df_trade)
+    max_month_year, expected_month_year = month_year_ma_one_offset(df_trade)
     if target_month_year <= expected_month_year:
         df_trade_avg = prediction_moving_average(target_month_year, df_trade, trade)
     else:
