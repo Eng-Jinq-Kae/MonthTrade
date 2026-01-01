@@ -105,3 +105,5 @@ for section, col in enumerate(all_cols):
 df_ref = dl.read_ref_section()
 df_ref = df_ref[df_ref['Section'] != 'overall']
 st.dataframe(df_ref, hide_index=True)
+
+st.success("All table loaded successfully.")
