@@ -22,3 +22,5 @@ for section in section_list:
     st.line_chart(df_plot, color=('#FF7F0E','#1F77B4'))
     st.write(f'Chart of: {section_name}')
     st.divider()
+
+st.success("All table loaded successfully.")
