@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 from sklearn.metrics import mean_absolute_percentage_error
 
-st.title("Prediction Accuracy")
+st.title("Prediction Accuracy - MAPE")
 df_ref = dl.read_ref_section()
 section_list = df_ref['Section'].unique().tolist()
 section_list.remove("overall")
