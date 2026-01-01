@@ -138,7 +138,7 @@ def prediction_model_selection_section(df_trade, trade, section):
     return best_model
 
 def prediction_linear_regression(target_month_year, df_trade, trade):
-    df_db = dl.read_data_monthtrade()
+    df_db = dl.update_data_mthtrade_db()
     db_max_month_year = dl.check_db_max_date(df_db)
     db_max_month_year = pd.Period(db_max_month_year, freq="M").to_timestamp(how='start')
     df_trade = df_trade[df_trade['Date']<target_month_year].sort_values('Date') # train without actual data
