@@ -8,6 +8,8 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sqlalchemy.exc import IntegrityError
 
+_cached_mthtrade_df = None
+
 LR_WINDOW = 4
 
 DEBUG = 0
@@ -152,10 +154,20 @@ def save_into_database(df_to_save: pd.DataFrame, table_name):
 def request_url_data_mthtrade():
     print("Get data from URL.")
     url = "https://api.data.gov.my/data-catalogue?id=trade_sitc_1d" 
-    response_json = requests.get(url=url).json()
+    response = requests.get(url=url)
     # pprint.pprint(response_json) #response as json
     # Preprocessing
-    df = pd.DataFrame(response_json)
+    try:
+        response.raise_for_status()   # catches 4xx / 5xx
+        response_json = response.json()
+        df = pd.DataFrame(response_json)  # wrap dict
+    except Exception as e:
+        print("Status:", response.status_code)
+        print("Headers:", response.headers)
+        print("Text:", response.text)
+        # df = get_data_monthtrade_db
+        raise e
+    print(df.head())
     # Data type preprocessing
     if 'date' in df.columns: df['date'] = pd.to_datetime(df['date'])
     df["exports"] = df["exports"].round().astype("int64")
@@ -166,6 +178,7 @@ def request_url_data_mthtrade():
         'exports': 'Exports',
         'imports': 'Imports'
     })
+    df = df[['Date', 'Section', 'Exports', 'Imports']]
     print("Successfully get data from URL.")
     return df
 
@@ -275,10 +288,13 @@ def setup_data_ma_pred_db(df_trade, trade: Literal['Exports', 'Imports']):
 
 
 def update_data_mthtrade_db():
+    global _cached_mthtrade_df
     if READ_URL_SQL:
-        # read URL
-        df_url = request_url_data_mthtrade()
-        return df_url
+        if _cached_mthtrade_df is None:
+            print("Cached df_url is None, reading from URL.")
+            _cached_mthtrade_df = request_url_data_mthtrade()
+        print("Cached df_url exist, skip URL")
+        return _cached_mthtrade_df
     else:
         df_db = get_data_monthtrade_db()
         if ENABLE_URL_UPDATE_SQL:
